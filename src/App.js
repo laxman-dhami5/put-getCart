@@ -4,6 +4,7 @@ import Layout from "./components/Layout/Layout";
 import Products from "./components/Shop/Products";
 import { Fragment, useEffect } from "react";
 import { uiActions } from "./store/uiSlice";
+import { cartActions } from "./store/cartSlice"; // Import cart actions to update the cart
 import Notification from "./components/UI/Notification";
 
 let isInitial = true;
@@ -14,6 +15,58 @@ function App() {
   const notification = useSelector((state) => state.ui.notification);
   const dispatch = useDispatch();
 
+  // Fetch cart data when the app loads
+  useEffect(() => {
+    const fetchData = async () => {
+      dispatch(
+        uiActions.showNotification({
+          status: "pending",
+          title: "Fetching...",
+          message: "Fetching cart data!",
+        })
+      );
+
+      try {
+        const response = await fetch(
+          "https://reduxproject-211b3-default-rtdb.firebaseio.com/cart.json"
+        );
+
+        if (!response.ok) {
+          throw new Error("Could not fetch data");
+        }
+
+        const data = await response.json();
+
+        // Provide default values and update Redux state with fetched data
+        const loadedCart = {
+          items: data?.items || [],
+          totalQuantity: data?.totalQuantity || 0,
+        };
+
+        dispatch(cartActions.replaceCart(loadedCart)); // Replace cart data in Redux store
+
+        dispatch(
+          uiActions.showNotification({
+            status: "success",
+            title: "Success!",
+            message: "Fetched cart data successfully!",
+          })
+        );
+      } catch (error) {
+        dispatch(
+          uiActions.showNotification({
+            status: "error",
+            title: "Error!",
+            message: error.message || "Fetching cart data failed!",
+          })
+        );
+      }
+    };
+
+    fetchData();
+  }, [dispatch]);
+
+  // Send cart data when it changes
   useEffect(() => {
     const sendCartData = async () => {
       if (isInitial) {
@@ -57,15 +110,13 @@ function App() {
           uiActions.showNotification({
             status: "error",
             title: "Error!",
-            message: "Sending cart data failed!",
+            message: error.message || "Sending cart data failed!",
           })
         );
       }
     };
 
-    
     sendCartData();
-
   }, [cart, dispatch]);
 
   return (
